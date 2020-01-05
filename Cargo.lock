@@ -395,6 +395,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive_more"
+version = "0.99.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2159be042979966de68315bce7034bb000c775f22e3e834e1c52ff78f041cae8"
+dependencies = [
+ "proc-macro2 1.0.6",
+ "quote 1.0.2",
+ "syn 1.0.11",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -850,7 +861,9 @@ dependencies = [
 name = "iterativ"
 version = "0.1.0"
 dependencies = [
+ "derive_more",
  "quicksilver",
+ "recs",
 ]
 
 [[package]]
@@ -1521,6 +1534,12 @@ checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
 dependencies = [
  "rand_core 0.3.1",
 ]
+
+[[package]]
+name = "recs"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae7fb921f1f7df72e9ee32716cc1c5104959077babe807005efee511e4f360da"
 
 [[package]]
 name = "redox_syscall"
