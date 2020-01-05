@@ -1,0 +1,8 @@
+[package]
+name = "iterativ"
+version = "0.1.0"
+authors = ["Ash <relativistic.policeman@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+quicksilver = { version = "0.3", default-features = false, features = ["fonts", "immi_ui", "saving"] }
