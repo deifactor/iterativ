@@ -4,6 +4,8 @@ mod tiles;
 use crate::geometry::*;
 use crate::tiles::*;
 use quicksilver::prelude::*;
+use std::panic;
+use stdweb::console;
 
 #[derive(Debug, Copy, Clone)]
 struct Position(pub Point<i32>);
@@ -74,6 +76,11 @@ impl State for Iterativ {
     }
 }
 
+fn panic_hook(info: &panic::PanicInfo) {
+    console!(error, info.to_string());
+}
+
 fn main() {
+    panic::set_hook(Box::new(panic_hook));
     run::<Iterativ>("Draw Geometry", Vector::new(800, 600), Settings::default());
 }
