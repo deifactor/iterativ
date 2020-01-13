@@ -4,6 +4,7 @@ use std::collections::HashMap;
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum TileId {
     Player,
+    Grunt,
 }
 
 pub struct Tiles {
@@ -13,10 +14,13 @@ pub struct Tiles {
 
 impl Tiles {
     pub fn render(font: &Font) -> Result<Self> {
-        let player = font.render("@", &FontStyle::new(14.0, Color::WHITE))?;
+        let style = &FontStyle::new(14.0, Color::WHITE);
+        let player = font.render("@", style)?;
+        let grunt = font.render("g", style)?;
         let mut tiles = HashMap::new();
         let tile_size = player.area().size();
         tiles.insert(TileId::Player, player);
+        tiles.insert(TileId::Grunt, grunt);
         Ok(Tiles { tiles, tile_size })
     }
 

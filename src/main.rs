@@ -25,17 +25,17 @@ struct Visible {
     pub tile_id: TileId,
 }
 
-pub struct GameState {
+pub struct Engine {
     pub world: World,
     player_action: Option<Action>,
 }
 
-impl GameState {
+impl Engine {
     pub fn new() -> Self {
         let mut world = World::new();
         world.register::<Position>();
         world.register::<Visible>();
-        GameState {
+        Engine {
             world,
             player_action: None,
         }
@@ -71,7 +71,7 @@ impl GameState {
 
 struct Iterativ {
     tiles: Tiles,
-    state: GameState,
+    state: Engine,
 }
 
 impl Iterativ {
@@ -87,7 +87,7 @@ impl State for Iterativ {
     fn new() -> Result<Iterativ> {
         let font = Font::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec())?;
         let tiles = Tiles::render(&font)?;
-        let mut state = GameState::new();
+        let mut state = Engine::new();
         let player = state
             .world
             .create_entity()
