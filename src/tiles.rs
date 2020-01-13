@@ -13,7 +13,7 @@ pub struct Tiles {
 
 impl Tiles {
     pub fn render(font: &Font) -> Result<Self> {
-        let player = font.render("@", &FontStyle::new(14.0, Color::BLACK))?;
+        let player = font.render("@", &FontStyle::new(14.0, Color::WHITE))?;
         let mut tiles = HashMap::new();
         let tile_size = player.area().size();
         tiles.insert(TileId::Player, player);

@@ -101,7 +101,7 @@ impl State for Iterativ {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        window.clear(Color::WHITE)?;
+        window.clear(Color::BLACK)?;
 
         let positions = self.state.world.read_storage::<Position>();
         let visibles = self.state.world.read_storage::<Visible>();
