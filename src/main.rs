@@ -9,6 +9,82 @@ use std::panic;
 use stdweb::console;
 
 #[derive(Component, Debug, Copy, Clone)]
+struct Initiative {
+    pub current: i32,
+    pub initial: i32,
+}
+
+impl Initiative {
+    pub fn new(initial: i32) -> Self {
+        Initiative {
+            current: initial,
+            initial,
+        }
+    }
+
+    /// Ticks down the initiative count. Returns true if the entity is ready (i.e., if its
+    /// initiative reached 0). Note that this will also reset the initiative to its initial value.
+    pub fn tick(&mut self) -> bool {
+        self.current -= 1;
+        if self.current <= 0 {
+            self.current = self.initial;
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Component, Default, Debug, Copy, Clone)]
+#[storage(NullStorage)]
+struct Ready;
+
+trait AI: Send + Sync + std::fmt::Debug {
+    fn decide(&mut self, world: &World, me: Entity) -> Action;
+}
+
+#[derive(Copy, Clone, Debug)]
+struct Swarm {
+    target: Entity,
+}
+
+impl AI for Swarm {
+    fn decide(&mut self, world: &World, me: Entity) -> Action {
+        let pos_component = world.read_component::<Position>();
+        let to_target =
+            pos_component.get(self.target).unwrap().0 - pos_component.get(me).unwrap().0;
+        Action::Move {
+            dx: to_target.x.signum(),
+            dy: to_target.y.signum(),
+        }
+    }
+}
+
+#[derive(Component, Debug)]
+struct AIComponent(pub Box<dyn AI>);
+
+struct InitiativeSystem;
+
+impl<'a> System<'a> for InitiativeSystem {
+    type SystemData = (
+        WriteStorage<'a, Initiative>,
+        WriteStorage<'a, Ready>,
+        Entities<'a>,
+    );
+
+    fn run(&mut self, (mut initiative, mut turn, entities): Self::SystemData) {
+        turn.clear();
+        for (initiative, entity) in (&mut initiative, &entities).join() {
+            if initiative.tick() {
+                turn.insert(entity, Ready)
+                    .expect("can't set Ready component");
+                console!(log, format!("entity {:?} is ready", entity))
+            }
+        }
+    }
+}
+
+#[derive(Component, Debug, Copy, Clone)]
 struct PlayerId(pub Entity);
 
 #[derive(Component, Debug, Copy, Clone)]
@@ -35,6 +111,9 @@ impl Engine {
         let mut world = World::new();
         world.register::<Position>();
         world.register::<Visible>();
+        world.register::<Initiative>();
+        world.register::<Ready>();
+        world.register::<AIComponent>();
         Engine {
             world,
             player_action: None,
@@ -45,7 +124,7 @@ impl Engine {
         self.player_action = Some(action);
     }
 
-    pub fn perform(&mut self, entity: Entity, action: Action) {
+    pub fn perform(&self, entity: Entity, action: &Action) {
         match action {
             Action::Move { dx, dy } => {
                 let mut pos_storage = self.world.write_storage::<Position>();
@@ -58,14 +137,26 @@ impl Engine {
         }
     }
 
-    pub fn player_act(&mut self) -> bool {
-        let player: PlayerId = *self.world.fetch();
-        if let Some(action) = self.player_action.take() {
-            self.perform(player.0, action);
-            true
-        } else {
-            false
+    pub fn tick(&mut self) {
+        let player = self.world.read_resource::<PlayerId>().0;
+        let mut ready = self.world.write_storage::<Ready>();
+        if ready.get(player).is_some() {
+            if let Some(player_action) = &self.player_action.take() {
+                self.perform(player, player_action);
+                ready.remove(player);
+            } else {
+                return;
+            }
         }
+        let mut ai = self.world.write_storage::<AIComponent>();
+        let entity = self.world.entities();
+        for (_ready, ai, entity) in (&ready, &mut ai, &entity).join() {
+            let action = ai.0.decide(&self.world, entity);
+            self.perform(entity, &action);
+        }
+        // Make sure `ready` is out of scope when we run the initiative system.
+        drop(ready);
+        InitiativeSystem.run_now(&self.world);
     }
 }
 
@@ -91,10 +182,21 @@ impl State for Iterativ {
         let player = state
             .world
             .create_entity()
-            .with(Position(Point { x: 0, y: 0 }))
+            .with(Position(Point { x: 5, y: 5 }))
             .with(Visible {
                 tile_id: TileId::Player,
             })
+            .with(Initiative::new(10))
+            .build();
+        state
+            .world
+            .create_entity()
+            .with(Position(Point { x: 0, y: 0 }))
+            .with(Visible {
+                tile_id: TileId::Grunt,
+            })
+            .with(Initiative::new(20))
+            .with(AIComponent(Box::new(Swarm { target: player })))
             .build();
         state.world.insert(PlayerId(player));
         Ok(Iterativ { tiles, state })
@@ -126,7 +228,8 @@ impl State for Iterativ {
     }
 
     fn update(&mut self, _window: &mut Window) -> Result<()> {
-        self.state.player_act();
+        self.state.tick();
+        self.state.world.maintain();
         Ok(())
     }
 }
