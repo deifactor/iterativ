@@ -14,6 +14,11 @@ struct Initiative {
     pub initial: i32,
 }
 
+const WIDTH: usize = 80;
+const HEIGHT: usize = 40;
+const MAP_HEIGHT: usize = 30;
+const TILE_SIZE: usize = 14;
+
 impl Initiative {
     pub fn new(initial: i32) -> Self {
         Initiative {
@@ -169,7 +174,7 @@ impl Iterativ {
     fn tile_rect(&self, pos: &Position) -> Rectangle {
         Rectangle::new(
             self.tiles.tile_size.times((pos.0.x, pos.0.y)),
-            self.tiles.tile_size,
+            self.tiles.font_size,
         )
     }
 }
@@ -240,5 +245,6 @@ fn panic_hook(info: &panic::PanicInfo) {
 
 fn main() {
     panic::set_hook(Box::new(panic_hook));
-    run::<Iterativ>("Draw Geometry", Vector::new(800, 600), Settings::default());
+    let size = Vector::new((WIDTH * TILE_SIZE) as i32, (HEIGHT * TILE_SIZE) as i32);
+    run::<Iterativ>("Draw Geometry", size, Settings::default());
 }
