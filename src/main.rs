@@ -4,33 +4,36 @@ mod tiles;
 use crate::geometry::*;
 use crate::tiles::*;
 use quicksilver::prelude::*;
+use specs::{prelude::*, Component};
 use std::panic;
 use stdweb::console;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Component, Debug, Copy, Clone)]
 struct Position(pub Point<i32>);
 
-#[derive(Debug, Clone)]
-/// If something should be drawn in the world, what's its tile? We can just store the image
-/// directly, since it's just an Rc so it's cheap to maintain.
-struct Tile(pub Image);
-
-pub struct World {
-    pub ecs: recs::Ecs,
-    pub player: recs::EntityId,
+#[derive(Component, Debug, Clone)]
+/// If something should be drawn in the world, what's its tile? This is *not* the underlying Image,
+/// since that's wrapped in an Rc and so it's not thread-safe.
+struct Visible {
+    pub tile_id: TileId,
 }
 
-impl World {
+pub struct GameState {
+    pub world: World,
+}
+
+impl GameState {
     pub fn new() -> Self {
-        let mut ecs = recs::Ecs::new();
-        let player = ecs.create_entity();
-        World { ecs, player }
+        let mut world = World::new();
+        world.register::<Position>();
+        world.register::<Visible>();
+        GameState { world }
     }
 }
 
 struct Iterativ {
     tiles: Tiles,
-    world: World,
+    state: GameState,
 }
 
 impl Iterativ {
@@ -46,32 +49,27 @@ impl State for Iterativ {
     fn new() -> Result<Iterativ> {
         let font = Font::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec())?;
         let tiles = Tiles::render(&font)?;
-        let mut world = World::new();
-        world
-            .ecs
-            .set(world.player, Position(Point { x: 0, y: 0 }))
-            .expect("missing player");
-        world
-            .ecs
-            .set(world.player, Tile(tiles.player.clone()))
-            .expect("missing player");
-        Ok(Iterativ { tiles, world })
+        let mut state = GameState::new();
+        state
+            .world
+            .create_entity()
+            .with(Position(Point { x: 0, y: 0 }))
+            .with(Visible {
+                tile_id: TileId::Player,
+            })
+            .build();
+        Ok(Iterativ { tiles, state })
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         window.clear(Color::WHITE)?;
-        let player = &self.tiles.player;
-        let pos = self
-            .world
-            .ecs
-            .borrow::<Position>(self.world.player)
-            .expect("no position?");
-        let image = self
-            .world
-            .ecs
-            .borrow::<Tile>(self.world.player)
-            .expect("no image?");
-        window.draw(&self.tile_rect(pos), Img(&image.0));
+
+        let positions = self.state.world.read_storage::<Position>();
+        let visibles = self.state.world.read_storage::<Visible>();
+
+        for (pos, vis) in (&positions, &visibles).join() {
+            window.draw(&self.tile_rect(pos), Img(self.tiles.tile(vis.tile_id)));
+        }
         Ok(())
     }
 }
