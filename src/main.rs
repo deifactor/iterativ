@@ -3,10 +3,9 @@ mod tiles;
 
 use crate::geometry::*;
 use crate::tiles::*;
+use log::info;
 use quicksilver::prelude::*;
 use specs::{prelude::*, Component};
-use std::panic;
-use stdweb::console;
 
 #[derive(Component, Debug, Copy, Clone)]
 struct Initiative {
@@ -83,7 +82,7 @@ impl<'a> System<'a> for InitiativeSystem {
             if initiative.tick() {
                 turn.insert(entity, Ready)
                     .expect("can't set Ready component");
-                console!(log, format!("entity {:?} is ready", entity))
+                info!("entity {:?} is ready", entity);
             }
         }
     }
@@ -239,12 +238,33 @@ impl State for Iterativ {
     }
 }
 
-fn panic_hook(info: &panic::PanicInfo) {
+#[cfg(target_arch = "wasm32")]
+fn wasm_panic_hook(info: &std::panic::PanicInfo) {
+    use stdweb::console;
     console!(error, info.to_string());
 }
 
+#[cfg(target_arch = "wasm32")]
+fn setup_logging() {
+    web_logger::init();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn setup_logging() {
+    simple_logger::init_with_level(log::Level::Trace).expect("couldn't init simple_logger");
+}
+
 fn main() {
-    panic::set_hook(Box::new(panic_hook));
+    #[cfg(target_arch = "wasm32")]
+    std::panic::set_hook(Box::new(wasm_panic_hook));
+    setup_logging();
+
     let size = Vector::new((WIDTH * TILE_SIZE) as i32, (HEIGHT * TILE_SIZE) as i32);
-    run::<Iterativ>("Draw Geometry", size, Settings::default());
+    // Setting min_size and max_size here tells i3 that this wants to be a floating window.
+    let settings = Settings {
+        min_size: Some(size),
+        max_size: Some(size),
+        ..Settings::default()
+    };
+    run::<Iterativ>("Draw Geometry", size, settings);
 }
