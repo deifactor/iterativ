@@ -1,5 +1,6 @@
 mod event_log;
 mod geometry;
+mod map;
 mod tiles;
 
 use crate::event_log::EventLogRenderer;
@@ -100,6 +101,32 @@ pub enum Action {
     Move { dx: i32, dy: i32 },
 }
 
+#[derive(Component, Default, Debug, Copy, Clone)]
+/// Tagged to indicate that an entity cannot be moved through.
+struct BlocksMovement;
+
+struct MapUpdateSystem;
+
+impl<'a> System<'a> for MapUpdateSystem {
+    type SystemData = (
+        WriteExpect<'a, map::Map>,
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, BlocksMovement>,
+        Entities<'a>,
+    );
+
+    fn run(&mut self, (mut map, positions, blocked, entities): Self::SystemData) {
+        map.clear_entities();
+        for (position, blocked, entity) in (&positions, blocked.maybe(), &entities).join() {
+            let idx = map.idx(position.0.x, position.0.y);
+            if blocked.is_some() {
+                map.blocked_by_entity[idx] = true;
+            }
+            map.entities[idx].push(entity);
+        }
+    }
+}
+
 #[derive(Component, Debug, Clone)]
 /// If something should be drawn in the world, what's its tile? This is *not* the underlying Image,
 /// since that's wrapped in an Rc and so it's not thread-safe.
@@ -116,6 +143,7 @@ impl Engine {
     pub fn new() -> Self {
         let mut world = World::new();
         world.register::<Position>();
+        world.register::<BlocksMovement>();
         world.register::<Visible>();
         world.register::<Initiative>();
         world.register::<Ready>();
@@ -133,27 +161,35 @@ impl Engine {
     pub fn perform(&self, entity: Entity, action: &Action) {
         match action {
             Action::Move { dx, dy } => {
+                let map = self.world.fetch::<map::Map>();
                 let mut pos_storage = self.world.write_storage::<Position>();
                 let pos = pos_storage
                     .get_mut(entity)
                     .expect("can't move something without a position");
-                pos.0.x += dx;
-                pos.0.y += dy;
+                let new_pos = (pos.0.x + dx, pos.0.y + dy);
+                if !map.blocked(new_pos.0, new_pos.1) {
+                    pos.0.x += dx;
+                    pos.0.y += dy;
+                }
             }
         }
     }
 
-    pub fn tick(&mut self) {
+    /// Performs all actions for entities that had anything to do. Returns true if somebody did
+    /// something.
+    fn perform_all(&mut self) -> bool {
+        let mut performed = false;
         let player = self.world.read_resource::<PlayerId>().0;
         let mut event_log = self.world.fetch_mut::<event_log::EventLog>();
         let mut ready = self.world.write_storage::<Ready>();
         if ready.get(player).is_some() {
             if let Some(player_action) = &self.player_action.take() {
                 self.perform(player, player_action);
+                performed = true;
                 event_log.log(event_log::Event::Other("stuff happened!".to_string()));
                 ready.remove(player);
             } else {
-                return;
+                return false;
             }
         }
         let mut ai = self.world.write_storage::<AIComponent>();
@@ -162,9 +198,17 @@ impl Engine {
             let action = ai.0.decide(&self.world, entity);
             self.perform(entity, &action);
         }
-        // Make sure `ready` is out of scope when we run the initiative system.
-        drop(ready);
+        true
+    }
+
+    pub fn tick(&mut self) {
+        let performed = self.perform_all();
+        if !performed {
+            return;
+        }
         InitiativeSystem.run_now(&self.world);
+        // If somebody did something, update the map.
+        MapUpdateSystem.run_now(&self.world);
     }
 }
 
@@ -196,6 +240,7 @@ impl State for Iterativ {
                 tile_id: TileId::Player,
             })
             .with(Initiative::new(10))
+            .with(BlocksMovement)
             .build();
         state
             .world
@@ -205,10 +250,12 @@ impl State for Iterativ {
                 tile_id: TileId::Grunt,
             })
             .with(Initiative::new(20))
+            .with(BlocksMovement)
             .with(AIComponent(Box::new(Swarm { target: player })))
             .build();
         state.world.insert(PlayerId(player));
         state.world.insert(event_log::EventLog::new());
+        state.world.insert(map::Map::new(WIDTH, HEIGHT));
 
         let log_renderer = EventLogRenderer::new(
             Rectangle::new(
