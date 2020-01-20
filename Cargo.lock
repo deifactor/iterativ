@@ -972,6 +972,7 @@ dependencies = [
  "simple_logger",
  "specs",
  "stdweb",
+ "textwrap",
  "web_logger",
 ]
 

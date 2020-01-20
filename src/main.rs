@@ -1,6 +1,8 @@
+mod event_log;
 mod geometry;
 mod tiles;
 
+use crate::event_log::EventLogRenderer;
 use crate::geometry::*;
 use crate::tiles::*;
 use log::info;
@@ -13,10 +15,10 @@ struct Initiative {
     pub initial: i32,
 }
 
-const WIDTH: usize = 80;
-const HEIGHT: usize = 40;
-const MAP_HEIGHT: usize = 30;
-const TILE_SIZE: usize = 14;
+const WIDTH: i32 = 80;
+const HEIGHT: i32 = 40;
+const MAP_HEIGHT: i32 = 30;
+const TILE_SIZE: i32 = 14;
 
 impl Initiative {
     pub fn new(initial: i32) -> Self {
@@ -143,10 +145,12 @@ impl Engine {
 
     pub fn tick(&mut self) {
         let player = self.world.read_resource::<PlayerId>().0;
+        let mut event_log = self.world.fetch_mut::<event_log::EventLog>();
         let mut ready = self.world.write_storage::<Ready>();
         if ready.get(player).is_some() {
             if let Some(player_action) = &self.player_action.take() {
                 self.perform(player, player_action);
+                event_log.log(event_log::Event::Other("stuff happened!".to_string()));
                 ready.remove(player);
             } else {
                 return;
@@ -167,6 +171,7 @@ impl Engine {
 struct Iterativ {
     tiles: Tiles,
     state: Engine,
+    log_renderer: EventLogRenderer,
 }
 
 impl Iterativ {
@@ -203,7 +208,21 @@ impl State for Iterativ {
             .with(AIComponent(Box::new(Swarm { target: player })))
             .build();
         state.world.insert(PlayerId(player));
-        Ok(Iterativ { tiles, state })
+        state.world.insert(event_log::EventLog::new());
+
+        let log_renderer = EventLogRenderer::new(
+            Rectangle::new(
+                (0, MAP_HEIGHT * TILE_SIZE),
+                (WIDTH * TILE_SIZE, (HEIGHT - MAP_HEIGHT) * TILE_SIZE),
+            ),
+            font,
+            FontStyle::new(TILE_SIZE as f32, Color::WHITE),
+        )?;
+        Ok(Iterativ {
+            tiles,
+            state,
+            log_renderer,
+        })
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
@@ -215,6 +234,10 @@ impl State for Iterativ {
         for (pos, vis) in (&positions, &visibles).join() {
             window.draw(&self.tile_rect(pos), Img(self.tiles.tile(vis.tile_id)));
         }
+
+        let event_log = self.state.world.fetch::<event_log::EventLog>();
+        self.log_renderer.render(&event_log, window)?;
+
         Ok(())
     }
 
