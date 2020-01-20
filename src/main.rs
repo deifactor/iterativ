@@ -47,7 +47,7 @@ impl Initiative {
 struct Ready;
 
 trait AI: Send + Sync + std::fmt::Debug {
-    fn decide(&mut self, world: &World, me: Entity) -> Action;
+    fn decide(&mut self, world: &World, me: Entity) -> Option<Action>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -56,14 +56,23 @@ struct Swarm {
 }
 
 impl AI for Swarm {
-    fn decide(&mut self, world: &World, me: Entity) -> Action {
+    fn decide(&mut self, world: &World, me: Entity) -> Option<Action> {
         let pos_component = world.read_component::<Position>();
         let to_target =
             pos_component.get(self.target).unwrap().0 - pos_component.get(me).unwrap().0;
-        Action::Move {
+        Some(Action::Move {
             dx: to_target.x.signum(),
             dy: to_target.y.signum(),
-        }
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct PlayerAI;
+
+impl AI for PlayerAI {
+    fn decide(&mut self, world: &World, _me: Entity) -> Option<Action> {
+        world.try_fetch::<PlayerAction>().map(|act| act.0.clone())
     }
 }
 
@@ -76,11 +85,15 @@ impl<'a> System<'a> for InitiativeSystem {
     type SystemData = (
         WriteStorage<'a, Initiative>,
         WriteStorage<'a, Ready>,
+        ReadExpect<'a, LoopState>,
         Entities<'a>,
     );
 
-    fn run(&mut self, (mut initiative, mut turn, entities): Self::SystemData) {
-        turn.clear();
+    fn run(&mut self, (mut initiative, mut turn, loop_state, entities): Self::SystemData) {
+        if *loop_state != LoopState::Looping {
+            return;
+        }
+
         for (initiative, entity) in (&mut initiative, &entities).join() {
             if initiative.tick() {
                 turn.insert(entity, Ready)
@@ -97,6 +110,10 @@ struct PlayerId(pub Entity);
 #[derive(Component, Debug, Copy, Clone)]
 struct Position(pub Point<i32>);
 
+#[derive(Debug)]
+struct PlayerAction(pub Action);
+
+#[derive(Debug, Clone)]
 pub enum Action {
     Move { dx: i32, dy: i32 },
 }
@@ -136,7 +153,12 @@ struct Visible {
 
 pub struct Engine {
     pub world: World,
-    player_action: Option<Action>,
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+enum LoopState {
+    Looping,
+    WaitingForPlayer,
 }
 
 impl Engine {
@@ -148,17 +170,23 @@ impl Engine {
         world.register::<Initiative>();
         world.register::<Ready>();
         world.register::<AIComponent>();
-        Engine {
-            world,
-            player_action: None,
-        }
+        world.insert(LoopState::Looping);
+        Engine { world }
     }
 
+    /// Indicates that the player has decided on what they want to do.
     pub fn set_action(&mut self, action: Action) {
-        self.player_action = Some(action);
+        self.world.insert(PlayerAction(action))
     }
 
-    pub fn perform(&self, entity: Entity, action: &Action) {
+    pub fn perform(&mut self, entity: Entity, action: &Action) {
+        info!("{:?} performing {:?}", entity, action);
+        if entity == self.world.fetch::<PlayerId>().0 {
+            // Clear out the player's action, since we're about to execute it.
+            self.world.remove::<PlayerAction>();
+            // We're no longer waiting for the player.
+            self.world.insert::<LoopState>(LoopState::Looping);
+        }
         match action {
             Action::Move { dx, dy } => {
                 let map = self.world.fetch::<map::Map>();
@@ -175,40 +203,40 @@ impl Engine {
         }
     }
 
-    /// Performs all actions for entities that had anything to do. Returns true if somebody did
-    /// something.
-    fn perform_all(&mut self) -> bool {
-        let mut performed = false;
-        let player = self.world.read_resource::<PlayerId>().0;
-        let mut event_log = self.world.fetch_mut::<event_log::EventLog>();
-        let mut ready = self.world.write_storage::<Ready>();
-        if ready.get(player).is_some() {
-            if let Some(player_action) = &self.player_action.take() {
-                self.perform(player, player_action);
-                performed = true;
-                event_log.log(event_log::Event::Other("stuff happened!".to_string()));
-                ready.remove(player);
-            } else {
-                return false;
-            }
-        }
+    fn find_actor(&self) -> Option<(Entity, Action)> {
+        let ready = self.world.write_storage::<Ready>();
         let mut ai = self.world.write_storage::<AIComponent>();
         let entity = self.world.entities();
+        let player = self.world.fetch::<PlayerId>().0;
         for (_ready, ai, entity) in (&ready, &mut ai, &entity).join() {
-            let action = ai.0.decide(&self.world, entity);
-            self.perform(entity, &action);
+            if let Some(action) = ai.0.decide(&self.world, entity) {
+                return Some((entity, action));
+            } else if entity == player {
+                *self.world.fetch_mut::<LoopState>() = LoopState::WaitingForPlayer;
+                return None;
+            }
         }
-        true
+        None
     }
 
+    // The game loop works like this: we find an entity that has something that it can do. If at
+    // any point the player is ready but doesn't have anything it can do, we enter the 'waiting for
+    // player' state. In this state, the initiative system does nothing. And even if there are mobs
+    // that are also ready, we'll eventually execute their actions given enough runs through
+    // tick(), meaning that we'll get into a situation where the player is the only mob that's
+    // ready, but it's not doing anything; i.e., we're waiting for playre input.
+    //
+    // Then, when the player inputs something, the next tick through will finally have the player's
+    // "AI" return an action, causing us to leave `WaitingForPlayer` and resume normal engine
+    // execution.
+
     pub fn tick(&mut self) {
-        let performed = self.perform_all();
-        if !performed {
-            return;
-        }
         InitiativeSystem.run_now(&self.world);
-        // If somebody did something, update the map.
-        MapUpdateSystem.run_now(&self.world);
+        if let Some((entity, action)) = self.find_actor() {
+            self.world.write_storage::<Ready>().remove(entity);
+            self.perform(entity, &action);
+            MapUpdateSystem.run_now(&self.world);
+        }
     }
 }
 
@@ -236,6 +264,7 @@ impl State for Iterativ {
             .world
             .create_entity()
             .with(Position(Point { x: 5, y: 5 }))
+            .with(AIComponent(Box::new(PlayerAI)))
             .with(Visible {
                 tile_id: TileId::Player,
             })
