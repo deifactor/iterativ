@@ -1,8 +1,10 @@
+mod ai;
 mod event_log;
 mod geometry;
 mod map;
 mod tiles;
 
+use crate::ai::{AIComponent, PlayerAI, PlayerAction, Swarm};
 use crate::event_log::EventLogRenderer;
 use crate::geometry::*;
 use crate::tiles::*;
@@ -46,39 +48,6 @@ impl Initiative {
 #[storage(NullStorage)]
 struct Ready;
 
-trait AI: Send + Sync + std::fmt::Debug {
-    fn decide(&mut self, world: &World, me: Entity) -> Option<Action>;
-}
-
-#[derive(Copy, Clone, Debug)]
-struct Swarm {
-    target: Entity,
-}
-
-impl AI for Swarm {
-    fn decide(&mut self, world: &World, me: Entity) -> Option<Action> {
-        let pos_component = world.read_component::<Position>();
-        let to_target =
-            pos_component.get(self.target).unwrap().0 - pos_component.get(me).unwrap().0;
-        Some(Action::Move {
-            dx: to_target.x.signum(),
-            dy: to_target.y.signum(),
-        })
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-struct PlayerAI;
-
-impl AI for PlayerAI {
-    fn decide(&mut self, world: &World, _me: Entity) -> Option<Action> {
-        world.try_fetch::<PlayerAction>().map(|act| act.0.clone())
-    }
-}
-
-#[derive(Component, Debug)]
-struct AIComponent(pub Box<dyn AI>);
-
 struct InitiativeSystem;
 
 impl<'a> System<'a> for InitiativeSystem {
@@ -109,9 +78,6 @@ struct PlayerId(pub Entity);
 
 #[derive(Component, Debug, Copy, Clone)]
 struct Position(pub Point<i32>);
-
-#[derive(Debug)]
-struct PlayerAction(pub Action);
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -169,7 +135,7 @@ impl Engine {
         world.register::<Visible>();
         world.register::<Initiative>();
         world.register::<Ready>();
-        world.register::<AIComponent>();
+        world.register::<ai::AIComponent>();
         world.insert(LoopState::Looping);
         Engine { world }
     }
@@ -205,7 +171,7 @@ impl Engine {
 
     fn find_actor(&self) -> Option<(Entity, Action)> {
         let ready = self.world.write_storage::<Ready>();
-        let mut ai = self.world.write_storage::<AIComponent>();
+        let mut ai = self.world.write_storage::<ai::AIComponent>();
         let entity = self.world.entities();
         let player = self.world.fetch::<PlayerId>().0;
         for (_ready, ai, entity) in (&ready, &mut ai, &entity).join() {
