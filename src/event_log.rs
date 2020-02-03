@@ -1,28 +1,38 @@
+use crate::engine::Name;
 use log::*;
 use quicksilver::prelude::*;
+use specs::prelude::*;
 use std::collections::VecDeque;
 
 /// Something that happened that should be displayed in the game's log.
 #[derive(Clone, Debug)]
 pub enum Event {
     Damage {
-        from: String,
-        to: String,
+        from: Entity,
+        to: Entity,
         amount: i32,
     },
     Death {
-        who: String,
+        who: Entity,
     },
     Other(String),
 }
 
 impl Event {
-    pub fn format(&self) -> String {
+    pub fn format(&self, names: &ReadStorage<Name>) -> String {
+        let lookup = |who: &Entity| {
+            names
+                .get(*who)
+                .map_or_else(|| "oops!".to_string(), |name| name.name.clone())
+        };
         match self {
-            Event::Damage { from, to, amount } => {
-                format!("{} hits {} for {} damage.", from, to, amount)
-            }
-            Event::Death { who } => format!("{} dies.", who),
+            Event::Damage { from, to, amount } => format!(
+                "{} hits {} for {} damage.",
+                lookup(from),
+                lookup(to),
+                amount
+            ),
+            Event::Death { who } => format!("{} dies.", lookup(who)),
             Event::Other(message) => message.clone(),
         }
     }
@@ -83,12 +93,17 @@ impl EventLogRenderer {
         })
     }
 
-    pub fn render(&self, log: &EventLog, window: &mut Window) -> Result<()> {
+    pub fn render(
+        &self,
+        log: &EventLog,
+        names: &ReadStorage<Name>,
+        window: &mut Window,
+    ) -> Result<()> {
         let (char_width, char_height) = self.character_bounds;
         // Get the `char_height` most recent events, from oldest to newest.
         let mut lines: Vec<_> = log
             .events()
-            .map(|ev| ev.format())
+            .map(|ev| ev.format(names))
             .take(char_height as usize)
             .collect();
         lines.reverse();

@@ -41,6 +41,9 @@ impl State for Iterativ {
         let player = state
             .world
             .create_entity()
+            .with(Name {
+                name: "you".to_string(),
+            })
             .with(Position(Point { x: 5, y: 5 }))
             .with(AIComponent(Box::new(PlayerAI)))
             .with(Visible {
@@ -52,6 +55,9 @@ impl State for Iterativ {
         state
             .world
             .create_entity()
+            .with(Name {
+                name: "the swarmer".to_string(),
+            })
             .with(Position(Point { x: 0, y: 0 }))
             .with(Visible {
                 tile_id: TileId::Grunt,
@@ -90,7 +96,8 @@ impl State for Iterativ {
         }
 
         let event_log = self.state.world.fetch::<event_log::EventLog>();
-        self.log_renderer.render(&event_log, window)?;
+        let names = self.state.world.read_storage::<Name>();
+        self.log_renderer.render(&event_log, &names, window)?;
 
         Ok(())
     }

@@ -1,5 +1,5 @@
 use crate::geometry::Point;
-use crate::{ai, map, tiles};
+use crate::{ai, event_log, map, tiles};
 
 use log::info;
 use specs::{prelude::*, Component};
@@ -29,6 +29,13 @@ impl Initiative {
             false
         }
     }
+}
+
+/// Represents the human-readable name of something. Should be all-lowercase (except for proper
+/// nouns, of course).
+#[derive(Component, Debug, Clone)]
+pub struct Name {
+    pub name: String,
 }
 
 #[derive(Component, Default, Debug, Copy, Clone)]
@@ -124,6 +131,7 @@ impl Engine {
         world.register::<Initiative>();
         world.register::<Ready>();
         world.register::<ai::AIComponent>();
+        world.register::<Name>();
         world.insert(LoopState::Looping);
         Engine { world }
     }
@@ -186,7 +194,12 @@ impl Engine {
     }
 
     fn do_attack(&mut self, entity: Entity, target: Entity) -> () {
-        info!("Entity {:?} attacks entity {:?}!", entity, target);
+        let mut log = self.world.fetch_mut::<event_log::EventLog>();
+        log.log(event_log::Event::Damage {
+            from: entity,
+            to: target,
+            amount: 1,
+        });
     }
 
     fn find_actor(&self) -> Option<(Entity, Action)> {
