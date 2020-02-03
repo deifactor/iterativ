@@ -26,12 +26,8 @@ pub struct Map {
     tiles: Vec<TileType>,
     /// All entities located at a given position.
     pub entities: Vec<Vec<Entity>>,
-    /// Whether the position is blocked to pathfinding *because of entities*. This can be computed just by knowing the
-    /// list of entities as well as some way to determine which entities block pathfinding, but
-    /// doing it this way means the map itself can handle pathfinding logic.
-    ///
-    /// Note that this does not include things that are blocked due to tiles.
-    pub blocked_by_entity: Vec<bool>,
+    /// For each tile that has a blocking entity on it, this returns that entity.
+    pub blockers: Vec<Option<Entity>>,
 }
 
 impl Map {
@@ -43,7 +39,7 @@ impl Map {
             width,
             height,
             tiles: vec![TileType::Floor; vec_size],
-            blocked_by_entity: vec![false; vec_size],
+            blockers: vec![None; vec_size],
             entities: vec![vec![]; vec_size],
         }
     }
@@ -63,7 +59,7 @@ impl Map {
     /// Clears out all entities, including the cached tile blocking information. Does not modify
     /// the tiles themselves.
     pub fn clear_entities(&mut self) {
-        self.blocked_by_entity = vec![false; self.size()];
+        self.blockers = vec![None; self.size()];
         for entities in &mut self.entities {
             entities.clear();
         }
@@ -71,6 +67,6 @@ impl Map {
 
     pub fn blocked(&self, x: i32, y: i32) -> bool {
         let idx = self.idx(x, y);
-        self.tiles[idx].is_solid() || self.blocked_by_entity[idx]
+        self.tiles[idx].is_solid() || self.blockers[idx].is_some()
     }
 }
