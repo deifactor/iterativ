@@ -230,11 +230,18 @@ impl Engine {
     // execution.
 
     pub fn tick(&mut self) {
-        InitiativeSystem.run_now(&self.world);
-        if let Some((entity, action)) = self.find_actor() {
-            self.world.write_storage::<Ready>().remove(entity);
-            self.perform(entity, &action);
-            MapUpdateSystem.run_now(&self.world);
+        // We run this in a loop so that we're not stuck ticking once per frame. TODO: Move the
+        // tick-until-waiting into a separate function or something.
+        loop {
+            InitiativeSystem.run_now(&self.world);
+            if let Some((entity, action)) = self.find_actor() {
+                self.world.write_storage::<Ready>().remove(entity);
+                self.perform(entity, &action);
+                MapUpdateSystem.run_now(&self.world);
+            }
+            if *self.world.fetch_mut::<LoopState>() == LoopState::WaitingForPlayer {
+                return;
+            }
         }
     }
 }
