@@ -1,5 +1,6 @@
 use crate::engine::Name;
 use log::*;
+use lru::LruCache;
 use quicksilver::prelude::*;
 use specs::prelude::*;
 use std::collections::VecDeque;
@@ -72,6 +73,10 @@ pub struct EventLogRenderer {
     style: FontStyle,
     /// The number of characters that we can draw.
     character_bounds: (i32, i32),
+
+    /// Used to cache rendering of individual lines. This is necessary because text rendering is
+    /// expensive.
+    render_cache: LruCache<String, Image>,
 }
 
 impl EventLogRenderer {
@@ -90,11 +95,25 @@ impl EventLogRenderer {
             font,
             style,
             character_bounds,
+            render_cache: LruCache::new(32),
         })
     }
 
+    /// Renders a single line, optionally hitting the cache. This takes a `mut` reference to self
+    /// because it can update the cache.
+    fn render_line(&mut self, line: String) -> Result<Image> {
+        let cache = &mut self.render_cache;
+        if let Some(image) = cache.get(&line) {
+            return Ok(image.clone());
+        } else {
+            let rendered = self.font.render(&line, &self.style)?;
+            cache.put(line.clone(), rendered);
+            Ok(cache.get(&line).expect("what").clone())
+        }
+    }
+
     pub fn render(
-        &self,
+        &mut self,
         log: &EventLog,
         names: &ReadStorage<Name>,
         window: &mut Window,
@@ -109,7 +128,7 @@ impl EventLogRenderer {
         lines.reverse();
 
         let wrapped_lines = textwrap::fill(&lines.join("\n"), char_width as usize);
-        let rendered = self.font.render(&wrapped_lines, &self.style)?;
+        let rendered = self.render_line(wrapped_lines)?;
         let y_coord = self.bounds.y() + self.bounds.height() - rendered.area().height();
         let pos = Rectangle::new((self.bounds.x(), y_coord), rendered.area().size());
         window.draw(&pos, Img(&rendered));

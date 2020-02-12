@@ -144,7 +144,7 @@ fn main() {
     setup_logging();
 
     let size = Vector::new((WIDTH * TILE_SIZE) as i32, (HEIGHT * TILE_SIZE) as i32);
-    // Setting min_size and max_size here tells i3 that this wants to be a floating window.
+    // Setting min_size and max_size here tells i3 that this wants to be a floating window. the
     let settings = Settings {
         min_size: Some(size),
         max_size: Some(size),
