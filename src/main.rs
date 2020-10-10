@@ -32,11 +32,8 @@ struct Iterativ {
 }
 
 impl Iterativ {
-    fn new(window: Window, graphics: Graphics) -> quicksilver::Result<Iterativ> {
-        let font = VectorFont::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec());
-        let tiles = Tiles {
-            renderer: font.to_renderer(&graphics, 14.0)?,
-        };
+    async fn new(window: Window, graphics: Graphics) -> quicksilver::Result<Iterativ> {
+        let tiles = Tiles::new(&graphics).await?;
         let mut state = Engine::new();
         let player = state
             .world
@@ -149,7 +146,7 @@ fn wasm_panic_hook(info: &std::panic::PanicInfo) {
 }
 
 async fn app(window: Window, gfx: Graphics, mut input: Input) -> Result<()> {
-    let mut app = Iterativ::new(window, gfx)?;
+    let mut app = Iterativ::new(window, gfx).await?;
     loop {
         while let Some(event) = input.next_event().await {
             app.event(&event)?
