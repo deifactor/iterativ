@@ -785,9 +785,8 @@ dependencies = [
  "derive_more",
  "log",
  "quicksilver",
- "simple_logger",
  "specs",
- "web_logger",
+ "stdweb",
 ]
 
 [[package]]
@@ -1263,6 +1262,8 @@ dependencies = [
  "mint",
  "platter",
  "rusttype 0.8.2",
+ "simple_logger",
+ "web_logger",
 ]
 
 [[package]]

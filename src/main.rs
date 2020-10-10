@@ -148,16 +148,6 @@ fn wasm_panic_hook(info: &std::panic::PanicInfo) {
     console!(error, info.to_string());
 }
 
-#[cfg(target_arch = "wasm32")]
-fn setup_logging() {
-    web_logger::init();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn setup_logging() {
-    simple_logger::init_with_level(log::Level::Debug).expect("couldn't init simple_logger");
-}
-
 async fn app(window: Window, gfx: Graphics, mut input: Input) -> Result<()> {
     let mut app = Iterativ::new(window, gfx)?;
     loop {
@@ -172,7 +162,6 @@ async fn app(window: Window, gfx: Graphics, mut input: Input) -> Result<()> {
 fn main() {
     #[cfg(target_arch = "wasm32")]
     std::panic::set_hook(Box::new(wasm_panic_hook));
-    setup_logging();
 
     let size = Vector::new((WIDTH * TILE_SIZE) as f32, (HEIGHT * TILE_SIZE) as f32);
     // Setting min_size and max_size here tells i3 that this wants to be a floating window. the
