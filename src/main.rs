@@ -10,7 +10,12 @@ use crate::engine::*;
 use crate::event_log::EventLogRenderer;
 use crate::geometry::*;
 use crate::tiles::*;
-use quicksilver::prelude::*;
+use quicksilver::{
+    geom::{Rectangle, Vector},
+    graphics::{Color, Graphics, VectorFont},
+    input::{Event, Input, Key},
+    Result, Settings, Window,
+};
 use specs::prelude::*;
 
 const WIDTH: i32 = 80;
@@ -21,22 +26,17 @@ const TILE_SIZE: i32 = 14;
 struct Iterativ {
     tiles: Tiles,
     state: Engine,
+    window: Window,
+    graphics: Graphics,
     log_renderer: EventLogRenderer,
 }
 
 impl Iterativ {
-    fn tile_rect(&self, pos: &Position) -> Rectangle {
-        Rectangle::new(
-            self.tiles.tile_size.times((pos.0.x, pos.0.y)),
-            self.tiles.font_size,
-        )
-    }
-}
-
-impl State for Iterativ {
-    fn new() -> Result<Iterativ> {
-        let font = Font::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec())?;
-        let tiles = Tiles::render(&font)?;
+    fn new(window: Window, graphics: Graphics) -> quicksilver::Result<Iterativ> {
+        let font = VectorFont::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec());
+        let tiles = Tiles {
+            renderer: font.to_renderer(&graphics, 14.0)?,
+        };
         let mut state = Engine::new();
         let player = state
             .world
@@ -70,41 +70,61 @@ impl State for Iterativ {
         state.world.insert(event_log::EventLog::new());
         state.world.insert(map::Map::new(WIDTH, HEIGHT));
 
+        let font = VectorFont::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec());
+        let renderer = font.to_renderer(&graphics, 14.0)?;
         let log_renderer = EventLogRenderer::new(
             Rectangle::new(
-                (0, MAP_HEIGHT * TILE_SIZE),
-                (WIDTH * TILE_SIZE, (HEIGHT - MAP_HEIGHT) * TILE_SIZE),
+                Vector {
+                    x: 0.0,
+                    y: (MAP_HEIGHT * TILE_SIZE) as f32,
+                },
+                Vector {
+                    x: (WIDTH * TILE_SIZE) as f32,
+                    y: ((HEIGHT - MAP_HEIGHT) * TILE_SIZE) as f32,
+                },
             ),
-            font,
-            FontStyle::new(TILE_SIZE as f32, Color::WHITE),
-        )?;
+            renderer,
+        );
         Ok(Iterativ {
+            window,
+            graphics,
             tiles,
             state,
             log_renderer,
         })
     }
 
-    fn draw(&mut self, window: &mut Window) -> Result<()> {
-        window.clear(Color::BLACK)?;
+    fn draw(&mut self) -> Result<()> {
+        self.graphics.clear(Color::BLACK);
 
         let positions = self.state.world.read_storage::<Position>();
         let visibles = self.state.world.read_storage::<Visible>();
 
+        let graphics = &mut self.graphics;
+
         for (pos, vis) in (&positions, &visibles).join() {
-            window.draw(&self.tile_rect(pos), Img(self.tiles.tile(vis.tile_id)));
+            let vec = Vector {
+                x: 14.0 * (pos.0.x as f32),
+                y: 18.0 * (pos.0.y as f32),
+            };
+            self.tiles.draw(graphics, vis.tile_id, vec)?;
         }
 
         let event_log = self.state.world.fetch::<event_log::EventLog>();
         let names = self.state.world.read_storage::<Name>();
-        self.log_renderer.render(&event_log, &names, window)?;
+        self.log_renderer
+            .render(&event_log, &names, &mut self.graphics)?;
 
+        self.graphics.present(&self.window)?;
         Ok(())
     }
 
-    fn event(&mut self, event: &Event, _window: &mut Window) -> Result<()> {
-        if let Event::Key(key, ButtonState::Pressed) = event {
-            match key {
+    pub fn event(&mut self, event: &Event) -> Result<()> {
+        if let Event::KeyboardInput(ev) = event {
+            if !ev.is_down() {
+                return Ok(());
+            }
+            match ev.key() {
                 Key::H => self.state.set_action(Action::Move { dx: -1, dy: 0 }),
                 Key::J => self.state.set_action(Action::Move { dx: 0, dy: 1 }),
                 Key::K => self.state.set_action(Action::Move { dx: 0, dy: -1 }),
@@ -115,7 +135,7 @@ impl State for Iterativ {
         Ok(())
     }
 
-    fn update(&mut self, _window: &mut Window) -> Result<()> {
+    fn update(&mut self) -> Result<()> {
         self.state.tick();
         self.state.world.maintain();
         Ok(())
@@ -135,7 +155,18 @@ fn setup_logging() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn setup_logging() {
-    simple_logger::init_with_level(log::Level::Trace).expect("couldn't init simple_logger");
+    simple_logger::init_with_level(log::Level::Debug).expect("couldn't init simple_logger");
+}
+
+async fn app(window: Window, gfx: Graphics, mut input: Input) -> Result<()> {
+    let mut app = Iterativ::new(window, gfx)?;
+    loop {
+        while let Some(event) = input.next_event().await {
+            app.event(&event)?
+        }
+        app.update()?;
+        app.draw()?;
+    }
 }
 
 fn main() {
@@ -143,12 +174,11 @@ fn main() {
     std::panic::set_hook(Box::new(wasm_panic_hook));
     setup_logging();
 
-    let size = Vector::new((WIDTH * TILE_SIZE) as i32, (HEIGHT * TILE_SIZE) as i32);
+    let size = Vector::new((WIDTH * TILE_SIZE) as f32, (HEIGHT * TILE_SIZE) as f32);
     // Setting min_size and max_size here tells i3 that this wants to be a floating window. the
     let settings = Settings {
-        min_size: Some(size),
-        max_size: Some(size),
+        size,
         ..Settings::default()
     };
-    run::<Iterativ>("Draw Geometry", size, settings);
+    quicksilver::run(settings, app);
 }

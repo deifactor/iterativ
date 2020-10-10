@@ -1,7 +1,10 @@
 use crate::engine::Name;
 use log::*;
-use lru::LruCache;
-use quicksilver::prelude::*;
+use quicksilver::{
+    geom::Rectangle,
+    graphics::{Color, FontRenderer, Graphics},
+    Result,
+};
 use specs::prelude::*;
 use std::collections::VecDeque;
 
@@ -69,69 +72,25 @@ impl EventLog {
 
 pub struct EventLogRenderer {
     bounds: Rectangle,
-    font: Font,
-    style: FontStyle,
-    /// The number of characters that we can draw.
-    character_bounds: (i32, i32),
-
-    /// Used to cache rendering of individual lines. This is necessary because text rendering is
-    /// expensive.
-    render_cache: LruCache<String, Image>,
+    renderer: FontRenderer,
 }
 
 impl EventLogRenderer {
-    pub fn new(bounds: Rectangle, font: Font, style: FontStyle) -> Result<Self> {
-        let font_size = font.render(".", &style)?.area().size();
-        let character_bounds = (
-            (bounds.width() / font_size.x) as i32,
-            (bounds.height() / font_size.y) as i32,
-        );
-        info!(
-            "Setting up renderer with bounds {:?}, character bounds {:?}",
-            bounds, character_bounds
-        );
-        Ok(EventLogRenderer {
-            bounds,
-            font,
-            style,
-            character_bounds,
-            render_cache: LruCache::new(32),
-        })
-    }
-
-    /// Renders a single line, optionally hitting the cache. This takes a `mut` reference to self
-    /// because it can update the cache.
-    fn render_line(&mut self, line: String) -> Result<Image> {
-        let cache = &mut self.render_cache;
-        if let Some(image) = cache.get(&line) {
-            return Ok(image.clone());
-        } else {
-            let rendered = self.font.render(&line, &self.style)?;
-            cache.put(line.clone(), rendered);
-            Ok(cache.get(&line).expect("what").clone())
-        }
+    pub fn new(bounds: Rectangle, renderer: FontRenderer) -> Self {
+        Self { bounds, renderer }
     }
 
     pub fn render(
         &mut self,
         log: &EventLog,
         names: &ReadStorage<Name>,
-        window: &mut Window,
+        graphics: &mut Graphics,
     ) -> Result<()> {
-        let (char_width, char_height) = self.character_bounds;
-        // Get the `char_height` most recent events, from oldest to newest.
-        let mut lines: Vec<_> = log
-            .events()
-            .map(|ev| ev.format(names))
-            .take(char_height as usize)
-            .collect();
+        let mut lines: Vec<_> = log.events().take(5).map(|ev| ev.format(names)).collect();
         lines.reverse();
-
-        let wrapped_lines = textwrap::fill(&lines.join("\n"), char_width as usize);
-        let rendered = self.render_line(wrapped_lines)?;
-        let y_coord = self.bounds.y() + self.bounds.height() - rendered.area().height();
-        let pos = Rectangle::new((self.bounds.x(), y_coord), rendered.area().size());
-        window.draw(&pos, Img(&rendered));
+        let joined = lines.join("\n");
+        self.renderer
+            .draw_wrapping(graphics, &joined, None, Color::WHITE, self.bounds.pos)?;
         Ok(())
     }
 }
