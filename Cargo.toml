@@ -10,3 +10,4 @@ stdweb = "0.4"
 derive_more = "*"
 specs = { version = "0.15", default-features = false, features = ["specs-derive"]}
 log = "0.4"
+enum-iterator = "0.6"

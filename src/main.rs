@@ -21,7 +21,7 @@ use specs::prelude::*;
 const WIDTH: i32 = 80;
 const HEIGHT: i32 = 40;
 const MAP_HEIGHT: i32 = 30;
-const TILE_SIZE: i32 = 14;
+const TILE_SIZE: i32 = 16;
 
 struct Iterativ {
     tiles: Tiles,
@@ -33,7 +33,12 @@ struct Iterativ {
 
 impl Iterativ {
     async fn new(window: Window, graphics: Graphics) -> quicksilver::Result<Iterativ> {
-        let tiles = Tiles::new(&graphics).await?;
+        let tiles = Tiles::new(
+            &graphics,
+            "sprites",
+            (TILE_SIZE as f32, TILE_SIZE as f32).into(),
+        )
+        .await?;
         let mut state = Engine::new();
         let player = state
             .world
@@ -100,11 +105,15 @@ impl Iterativ {
         let graphics = &mut self.graphics;
 
         for (pos, vis) in (&positions, &visibles).join() {
+            // XXX: get rid of these magic constants.
             let vec = Vector {
-                x: 14.0 * (pos.0.x as f32),
-                y: 18.0 * (pos.0.y as f32),
+                x: 16.0 * (pos.0.x as f32),
+                y: 16.0 * (pos.0.y as f32),
             };
-            self.tiles.draw(graphics, vis.tile_id, vec)?;
+            graphics.draw_image(
+                &self.tiles.tile(vis.tile_id),
+                Rectangle::new(vec, self.tiles.size()),
+            );
         }
 
         let event_log = self.state.world.fetch::<event_log::EventLog>();
