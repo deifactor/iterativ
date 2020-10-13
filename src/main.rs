@@ -135,6 +135,10 @@ impl Iterativ {
                 Key::J => self.state.set_action(Action::Move { dx: 0, dy: 1 }),
                 Key::K => self.state.set_action(Action::Move { dx: 0, dy: -1 }),
                 Key::L => self.state.set_action(Action::Move { dx: 1, dy: 0 }),
+                Key::Y => self.state.set_action(Action::Move { dx: -1, dy: -1 }),
+                Key::U => self.state.set_action(Action::Move { dx: 1, dy: -1 }),
+                Key::B => self.state.set_action(Action::Move { dx: -1, dy: 1 }),
+                Key::N => self.state.set_action(Action::Move { dx: 1, dy: 1 }),
                 _ => (),
             }
         }
