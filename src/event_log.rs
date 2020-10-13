@@ -1,4 +1,4 @@
-use crate::engine::Name;
+use crate::components::Name;
 use log::*;
 use quicksilver::{
     geom::Rectangle,

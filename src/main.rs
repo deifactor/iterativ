@@ -1,11 +1,14 @@
 mod ai;
+mod components;
 mod engine;
 mod event_log;
 mod geometry;
 mod map;
+mod systems;
 mod tiles;
 
 use crate::ai::{AIComponent, PlayerAI, Swarm};
+use crate::components::*;
 use crate::engine::*;
 use crate::event_log::EventLogRenderer;
 use crate::geometry::*;
