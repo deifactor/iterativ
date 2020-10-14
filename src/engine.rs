@@ -1,7 +1,10 @@
-use crate::{ai, components::*, event_log, map, systems::*};
-
 use log::info;
 use specs::prelude::*;
+
+use crate::ai;
+use crate::components::*;
+use crate::geometry::Point;
+use crate::systems::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct PlayerId(pub Entity);
@@ -28,10 +31,12 @@ impl Engine {
         world.register::<Position>();
         world.register::<BlocksMovement>();
         world.register::<Visible>();
-        world.register::<Initiative>();
+        specs::RunNow::setup(&mut InitiativeSystem, &mut world);
         world.register::<Ready>();
         world.register::<ai::AIComponent>();
         world.register::<Name>();
+        world.register::<MoveIntent>();
+        world.register::<AttackIntent>();
         world.insert(LoopState::Looping);
         Engine { world }
     }
@@ -41,7 +46,7 @@ impl Engine {
         self.world.insert(ai::PlayerAction(action))
     }
 
-    pub fn perform(&mut self, entity: Entity, action: &Action) {
+    pub fn perform(&mut self, entity: Entity, action: Action) {
         info!("{:?} performing {:?}", entity, action);
         if entity == self.world.fetch::<PlayerId>().0 {
             // Clear out the player's action, since we're about to execute it.
@@ -50,56 +55,20 @@ impl Engine {
             self.world.insert::<LoopState>(LoopState::Looping);
         }
 
-        // If `try_perform` returns an alternate action to do, we try that instead, and continue
-        // until we completely fail to have an alternate action (because we succeeded).
-        let mut maybe_action = Some(action.clone());
-        while let Some(action) = maybe_action {
-            maybe_action = self.try_perform(entity, &action);
-        }
-    }
-
-    /// Attempts to perform the given action. If that action fails because of the context, returns
-    /// the action that should be tried instead. For example, moving into a square with an entity
-    /// will return an Attack action targeting that entity.
-    pub fn try_perform(&mut self, entity: Entity, action: &Action) -> Option<Action> {
         match action {
             Action::Move { dx, dy } => {
-                let blocker = self.do_move(entity, *dx, *dy)?;
-                Some(Action::Attack { target: blocker })
+                self.world
+                    .write_storage::<MoveIntent>()
+                    .insert(entity, MoveIntent(Point { x: dx, y: dy }))
+                    .expect("failed to insert move intent");
             }
             Action::Attack { target } => {
-                self.do_attack(entity, *target);
-                None
+                self.world
+                    .write_storage::<AttackIntent>()
+                    .insert(entity, AttackIntent { target })
+                    .expect("failed to insert attack intent");
             }
         }
-    }
-
-    /// Tries to move the given entity by the given displacement. If it fails to do so, returns the
-    /// entity that was blocking it.
-    pub fn do_move(&mut self, entity: Entity, dx: i32, dy: i32) -> Option<Entity> {
-        let map = self.world.fetch::<map::Map>();
-        let mut pos_storage = self.world.write_storage::<Position>();
-        let pos = pos_storage
-            .get_mut(entity)
-            .expect("can't move something without a position");
-        let new_pos = (pos.0.x + dx, pos.0.y + dy);
-        // TODO: only do this check if the entity is a collider
-        if let Some(blocker) = map.blockers[map.idx(new_pos.0, new_pos.1)] {
-            Some(blocker)
-        } else {
-            pos.0.x += dx;
-            pos.0.y += dy;
-            None
-        }
-    }
-
-    fn do_attack(&mut self, entity: Entity, target: Entity) -> () {
-        let mut log = self.world.fetch_mut::<event_log::EventLog>();
-        log.log(event_log::Event::Damage {
-            from: entity,
-            to: target,
-            amount: 1,
-        });
     }
 
     fn find_actor(&self) -> Option<(Entity, Action)> {
@@ -136,9 +105,11 @@ impl Engine {
             InitiativeSystem.run_now(&self.world);
             if let Some((entity, action)) = self.find_actor() {
                 self.world.write_storage::<Ready>().remove(entity);
-                self.perform(entity, &action);
+                self.perform(entity, action);
                 MapUpdateSystem.run_now(&self.world);
             }
+            MovementSystem.run_now(&self.world);
+            AttackSystem.run_now(&self.world);
             if *self.world.fetch_mut::<LoopState>() == LoopState::WaitingForPlayer {
                 return;
             }

@@ -45,7 +45,7 @@ pub struct Name {
 
 /// The position of a given entity inside the world.
 #[derive(Component, Debug, Copy, Clone)]
-pub struct Position(pub Point<i32>);
+pub struct Position(pub Point);
 
 /// A tag to indicate that an entity cannot be moved through.
 #[derive(Component, Default, Debug, Copy, Clone)]
@@ -57,3 +57,17 @@ pub struct BlocksMovement;
 pub struct Visible {
     pub tile_id: TileId,
 }
+
+// All AttackIntent components indicate that the entity is going to attack/etc this turn. These will
+// later be resolved by systems.
+
+/// Indicates that this entity wants to attack the target. Resolved by AttackSystem.
+#[derive(Component, Copy, Clone, Debug)]
+pub struct AttackIntent {
+    pub target: Entity,
+}
+
+/// Indicates that this entity wants to move. Resolved by MovementSystem. Only makes sense on entities
+/// that have a Position.
+#[derive(Component, Copy, Clone, Debug)]
+pub struct MoveIntent(pub Point);

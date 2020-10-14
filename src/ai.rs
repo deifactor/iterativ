@@ -19,10 +19,16 @@ impl AI for Swarm {
         let pos_component = world.read_component::<Position>();
         let to_target =
             pos_component.get(self.target).unwrap().0 - pos_component.get(me).unwrap().0;
-        Some(Action::Move {
-            dx: to_target.x.signum(),
-            dy: to_target.y.signum(),
-        })
+        if to_target.linf() <= 1 {
+            Some(Action::Attack {
+                target: self.target,
+            })
+        } else {
+            Some(Action::Move {
+                dx: to_target.x.signum(),
+                dy: to_target.y.signum(),
+            })
+        }
     }
 }
 
