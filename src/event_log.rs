@@ -27,7 +27,7 @@ impl Event {
         let lookup = |who: &Entity| {
             names
                 .get(*who)
-                .map_or_else(|| "oops!".to_string(), |name| name.name.clone())
+                .map_or_else(|| "an unnamed bug".to_string(), |name| name.name.clone())
         };
         match self {
             Event::Damage { from, to, amount } => format!(
@@ -46,7 +46,7 @@ impl Event {
 pub struct EventLog {
     // The list of events. The head of the queue is the oldest event, and the tail is the newest
     // one.
-    events: VecDeque<Event>,
+    events: VecDeque<String>,
     capacity: usize,
 }
 
@@ -58,15 +58,15 @@ impl EventLog {
         }
     }
 
-    pub fn log(&mut self, event: Event) {
+    pub fn log(&mut self, event: String) {
         info!("Logging event: {:?}", event);
         self.events.push_back(event);
     }
 
     /// Returns the events, from *newest to oldest*. This is the order that they should be rendered
     /// in.
-    pub fn events(&self) -> impl Iterator<Item = &Event> {
-        self.events.iter().rev()
+    pub fn events(&self) -> impl Iterator<Item = &str> {
+        self.events.iter().map(|s| s.as_str()).rev()
     }
 }
 
@@ -86,7 +86,7 @@ impl EventLogRenderer {
         names: &ReadStorage<Name>,
         graphics: &mut Graphics,
     ) -> Result<()> {
-        let mut lines: Vec<_> = log.events().take(5).map(|ev| ev.format(names)).collect();
+        let mut lines: Vec<_> = log.events().take(5).collect();
         lines.reverse();
         let joined = lines.join("\n");
         self.renderer

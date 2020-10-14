@@ -11,9 +11,10 @@ impl<'a> System<'a> for DeathSystem {
         Entities<'a>,
         ReadStorage<'a, CombatStats>,
         WriteExpect<'a, EventLog>,
+        ReadStorage<'a, Name>,
     );
 
-    fn run(&mut self, (entities, stats, mut event_log): Self::SystemData) {
+    fn run(&mut self, (entities, stats, mut event_log, names): Self::SystemData) {
         let mut to_die: Vec<Entity> = Vec::new();
         for (entity, stats) in (&entities, &stats).join() {
             if stats.hp <= 0 {
@@ -22,7 +23,7 @@ impl<'a> System<'a> for DeathSystem {
         }
         for dead in to_die {
             entities.delete(dead).expect("couldn't delete");
-            event_log.log(Event::Death { who: dead });
+            event_log.log(Event::Death { who: dead }.format(&names));
         }
     }
 }
