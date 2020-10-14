@@ -134,14 +134,30 @@ impl Iterativ {
                 return Ok(());
             }
             match ev.key() {
-                Key::H => self.state.set_action(Action::Move { dx: -1, dy: 0 }),
-                Key::J => self.state.set_action(Action::Move { dx: 0, dy: 1 }),
-                Key::K => self.state.set_action(Action::Move { dx: 0, dy: -1 }),
-                Key::L => self.state.set_action(Action::Move { dx: 1, dy: 0 }),
-                Key::Y => self.state.set_action(Action::Move { dx: -1, dy: -1 }),
-                Key::U => self.state.set_action(Action::Move { dx: 1, dy: -1 }),
-                Key::B => self.state.set_action(Action::Move { dx: -1, dy: 1 }),
-                Key::N => self.state.set_action(Action::Move { dx: 1, dy: 1 }),
+                Key::H => self.state.set_action(Action::Move {
+                    motion: (-1, 0).into(),
+                }),
+                Key::J => self.state.set_action(Action::Move {
+                    motion: (0, 1).into(),
+                }),
+                Key::K => self.state.set_action(Action::Move {
+                    motion: (0, -1).into(),
+                }),
+                Key::L => self.state.set_action(Action::Move {
+                    motion: (1, 0).into(),
+                }),
+                Key::Y => self.state.set_action(Action::Move {
+                    motion: (-1, -1).into(),
+                }),
+                Key::U => self.state.set_action(Action::Move {
+                    motion: (1, -1).into(),
+                }),
+                Key::B => self.state.set_action(Action::Move {
+                    motion: (-1, 1).into(),
+                }),
+                Key::N => self.state.set_action(Action::Move {
+                    motion: (1, 1).into(),
+                }),
                 _ => (),
             }
         }

@@ -3,7 +3,7 @@ use specs::prelude::*;
 
 use crate::ai;
 use crate::components::*;
-use crate::geometry::Point;
+use crate::geometry::Motion;
 use crate::map::Map;
 use crate::systems::*;
 
@@ -12,7 +12,7 @@ pub struct PlayerId(pub Entity);
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    Move { dx: i32, dy: i32 },
+    Move { motion: Motion },
     Attack { target: Entity },
 }
 
@@ -54,7 +54,7 @@ impl Engine {
     /// If this returns `None`, then the action requested is impossible (e.g., moving into a wall).
     fn normalize_action(&mut self, action: Action) -> Option<Action> {
         match action {
-            Action::Move { dx, dy } => {
+            Action::Move { motion } => {
                 let map = self.world.fetch::<Map>();
                 let player_id = self.world.fetch::<PlayerId>().0;
                 let player_pos = self
@@ -63,7 +63,8 @@ impl Engine {
                     .get(player_id)
                     .unwrap()
                     .0;
-                if let Some(blocker) = map.blockers[map.idx(player_pos.x + dx, player_pos.y + dy)] {
+                let target = player_pos + motion;
+                if let Some(blocker) = map.blockers[map.idx(target.x, target.y)] {
                     Some(Action::Attack { target: blocker })
                 } else {
                     Some(action)
@@ -83,10 +84,10 @@ impl Engine {
         }
 
         match action {
-            Action::Move { dx, dy } => {
+            Action::Move { motion } => {
                 self.world
                     .write_storage::<MoveIntent>()
-                    .insert(entity, MoveIntent(Point { x: dx, y: dy }))
+                    .insert(entity, MoveIntent(motion))
                     .expect("failed to insert move intent");
             }
             Action::Attack { target } => {

@@ -1,4 +1,4 @@
-use crate::geometry::Point;
+use crate::geometry::{Motion, Point};
 use crate::tiles::TileId;
 use specs::{prelude::*, Component};
 
@@ -70,4 +70,4 @@ pub struct AttackIntent {
 /// Indicates that this entity wants to move. Resolved by MovementSystem. Only makes sense on entities
 /// that have a Position.
 #[derive(Component, Copy, Clone, Debug)]
-pub struct MoveIntent(pub Point);
+pub struct MoveIntent(pub Motion);

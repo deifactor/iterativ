@@ -25,8 +25,7 @@ impl AI for Swarm {
             })
         } else {
             Some(Action::Move {
-                dx: to_target.x.signum(),
-                dy: to_target.y.signum(),
+                motion: to_target.signum(),
             })
         }
     }
