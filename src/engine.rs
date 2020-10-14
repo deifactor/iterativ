@@ -38,6 +38,8 @@ impl Engine {
         world.register::<Name>();
         world.register::<MoveIntent>();
         world.register::<AttackIntent>();
+        world.register::<QueuedDamage>();
+        world.register::<CombatStats>();
         world.insert(LoopState::Looping);
         Engine { world }
     }
@@ -142,6 +144,9 @@ impl Engine {
             }
             MovementSystem.run_now(&self.world);
             AttackSystem.run_now(&self.world);
+            DamageSystem.run_now(&self.world);
+            DeathSystem.run_now(&self.world);
+            self.world.maintain();
             if *self.world.fetch_mut::<LoopState>() == LoopState::WaitingForPlayer {
                 return;
             }

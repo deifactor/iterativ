@@ -6,3 +6,7 @@ mod attack;
 pub use attack::AttackSystem;
 mod movement;
 pub use movement::MovementSystem;
+mod damage;
+pub use damage::DamageSystem;
+mod death;
+pub use death::DeathSystem;

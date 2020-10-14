@@ -54,6 +54,11 @@ impl Iterativ {
             .with(Visible {
                 tile_id: TileId::Player,
             })
+            .with(CombatStats {
+                max_hp: 20,
+                hp: 20,
+                attack: 3,
+            })
             .with(Initiative::new(10))
             .with(BlocksMovement)
             .build();
@@ -66,6 +71,11 @@ impl Iterativ {
             .with(Position(Point { x: 0, y: 0 }))
             .with(Visible {
                 tile_id: TileId::Grunt,
+            })
+            .with(CombatStats {
+                max_hp: 5,
+                hp: 5,
+                attack: 1,
             })
             .with(Initiative::new(20))
             .with(BlocksMovement)

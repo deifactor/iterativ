@@ -7,17 +7,20 @@ pub struct AttackSystem;
 
 impl<'a> System<'a> for AttackSystem {
     type SystemData = (
-        WriteStorage<'a, AttackIntent>,
         Entities<'a>,
+        WriteStorage<'a, AttackIntent>,
+        ReadStorage<'a, CombatStats>,
+        WriteStorage<'a, QueuedDamage>,
         WriteExpect<'a, EventLog>,
     );
 
-    fn run(&mut self, (mut intents, entities, mut event_log): Self::SystemData) {
-        for (intent, entity) in (&intents, &entities).join() {
+    fn run(&mut self, (entities, mut intents, stats, mut queues, mut event_log): Self::SystemData) {
+        for (entity, intent, stats) in (&entities, &intents, &stats).join() {
+            QueuedDamage::add(&mut queues, intent.target, stats.attack);
             event_log.log(Event::Damage {
                 from: entity,
                 to: intent.target,
-                amount: 1,
+                amount: stats.attack,
             });
         }
         intents.clear();

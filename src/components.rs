@@ -71,3 +71,27 @@ pub struct AttackIntent {
 /// that have a Position.
 #[derive(Component, Copy, Clone, Debug)]
 pub struct MoveIntent(pub Motion);
+
+/// Stats that are relevant for combat.
+#[derive(Component, Copy, Clone, Debug)]
+pub struct CombatStats {
+    pub max_hp: i32,
+    pub hp: i32,
+    pub attack: i32,
+}
+
+/// Indicates that damage is going to be applied to the given entity this tick.
+#[derive(Component, Clone, Debug)]
+pub struct QueuedDamage(pub Vec<i32>);
+
+impl QueuedDamage {
+    pub fn add(store: &mut WriteStorage<Self>, who: Entity, amount: i32) {
+        if let Some(queue) = store.get_mut(who) {
+            queue.0.push(amount);
+        } else {
+            store
+                .insert(who, QueuedDamage(vec![amount]))
+                .expect("could not enqueue damage");
+        }
+    }
+}
