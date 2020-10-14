@@ -1,5 +1,7 @@
 use specs::Entity;
 
+use crate::geometry::Point;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TileType {
     Floor,
@@ -47,12 +49,10 @@ impl Map {
         (self.width * self.height) as usize
     }
 
-    pub fn idx(&self, x: i32, y: i32) -> usize {
-        (self.width * y + x) as usize
-    }
-
-    pub fn from_idx(&self, idx: usize) -> (i32, i32) {
-        ((idx as i32) % self.width, (idx as i32) / self.width)
+    fn idx(&self, point: Point) -> usize {
+        assert!(point.x >= 0);
+        assert!(point.y >= 0);
+        (self.width * point.y + point.x) as usize
     }
 
     /// Clears out all entities, including the cached tile blocking information. Does not modify
@@ -64,8 +64,23 @@ impl Map {
         }
     }
 
-    pub fn blocked(&self, x: i32, y: i32) -> bool {
-        let idx = self.idx(x, y);
+    pub fn add_entity(&mut self, point: Point, entity: Entity, blocks: bool) {
+        let idx = self.idx(point);
+        if blocks {
+            self.blockers[idx] = Some(entity)
+        }
+        self.entities[idx].push(entity);
+    }
+
+    /// Is movement onto this tile blocked?
+    pub fn is_blocked(&self, point: Point) -> bool {
+        let idx = self.idx(point);
         self.tiles[idx].is_solid() || self.blockers[idx].is_some()
+    }
+
+    /// If motion onto this tile is blocked by a specific entity, returns that entity. Note that
+    /// this can return None even if is_blocked is true if the map itself blocks movement.
+    pub fn blockers(&self, point: Point) -> Option<Entity> {
+        self.blockers[self.idx(point)]
     }
 }

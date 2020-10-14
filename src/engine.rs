@@ -64,8 +64,12 @@ impl Engine {
                     .unwrap()
                     .0;
                 let target = player_pos + motion;
-                if let Some(blocker) = map.blockers[map.idx(target.x, target.y)] {
-                    Some(Action::Attack { target: blocker })
+                if map.is_blocked(target) {
+                    if let Some(blocker) = map.blockers(target) {
+                        Some(Action::Attack { target: blocker })
+                    } else {
+                        None
+                    }
                 } else {
                     Some(action)
                 }

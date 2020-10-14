@@ -15,8 +15,7 @@ impl<'a> System<'a> for MovementSystem {
     fn run(&mut self, (mut intents, mut positions, map): Self::SystemData) {
         for (intent, position) in (&intents, &mut positions).join() {
             let new_pos = position.0 + intent.0;
-            if let Some(blocker) = map.blockers[map.idx(new_pos.x, new_pos.y)] {
-            } else {
+            if !map.is_blocked(new_pos) {
                 position.0 = new_pos;
             }
         }
