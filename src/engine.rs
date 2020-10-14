@@ -140,9 +140,9 @@ impl Engine {
             if let Some((entity, action)) = self.find_actor() {
                 self.world.write_storage::<Ready>().remove(entity);
                 self.perform(entity, action);
-                MapUpdateSystem.run_now(&self.world);
             }
             MovementSystem.run_now(&self.world);
+            MapUpdateSystem.run_now(&self.world);
             AttackSystem.run_now(&self.world);
             DamageSystem.run_now(&self.world);
             DeathSystem.run_now(&self.world);
