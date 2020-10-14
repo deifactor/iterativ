@@ -4,6 +4,7 @@ use specs::prelude::*;
 use crate::ai;
 use crate::components::*;
 use crate::geometry::Point;
+use crate::map::Map;
 use crate::systems::*;
 
 #[derive(Debug, Copy, Clone)]
@@ -41,9 +42,35 @@ impl Engine {
         Engine { world }
     }
 
-    /// Indicates that the player has decided on what they want to do.
     pub fn set_action(&mut self, action: Action) {
-        self.world.insert(ai::PlayerAction(action))
+        if let Some(action) = self.normalize_action(action) {
+            self.world.insert(ai::PlayerAction(action));
+        }
+    }
+
+    /// Translates a 'high-level' action into a low-level one. This implements things like moving
+    /// into an entity to attack it.
+    ///
+    /// If this returns `None`, then the action requested is impossible (e.g., moving into a wall).
+    fn normalize_action(&mut self, action: Action) -> Option<Action> {
+        match action {
+            Action::Move { dx, dy } => {
+                let map = self.world.fetch::<Map>();
+                let player_id = self.world.fetch::<PlayerId>().0;
+                let player_pos = self
+                    .world
+                    .read_storage::<Position>()
+                    .get(player_id)
+                    .unwrap()
+                    .0;
+                if let Some(blocker) = map.blockers[map.idx(player_pos.x + dx, player_pos.y + dy)] {
+                    Some(Action::Attack { target: blocker })
+                } else {
+                    Some(action)
+                }
+            }
+            _ => Some(action),
+        }
     }
 
     pub fn perform(&mut self, entity: Entity, action: Action) {
