@@ -86,7 +86,7 @@ impl Iterativ {
         state.world.insert(map::Map::new(WIDTH, HEIGHT));
 
         let font = VectorFont::from_bytes(include_bytes!("../static/white_rabbit.ttf").to_vec());
-        let renderer = font.to_renderer(&graphics, 14.0)?;
+        let renderer = font.to_renderer(&graphics, 16.0)?;
         let log_renderer = EventLogRenderer::new(
             Rectangle::new(
                 Vector {
