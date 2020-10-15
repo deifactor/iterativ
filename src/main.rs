@@ -49,7 +49,7 @@ impl Iterativ {
             .with(Name {
                 name: "you".to_string(),
             })
-            .with(Position(Point { x: 5, y: 5 }))
+            .with(Position((5, 5).into()))
             .with(AIComponent(Box::new(PlayerAI)))
             .with(IsPlayer)
             .with(Visible {
@@ -69,7 +69,7 @@ impl Iterativ {
             .with(Name {
                 name: "the swarmer".to_string(),
             })
-            .with(Position(Point { x: 0, y: 0 }))
+            .with(Position((0, 0).into()))
             .with(Visible {
                 tile_id: TileId::Grunt,
             })

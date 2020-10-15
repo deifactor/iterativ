@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 quicksilver = { version = "0.4.0-alpha0.6", default-features = false, features = ["easy-log", "font", "saving", "ttf"] }
 stdweb = "0.4"
-derive_more = "*"
 specs = { version = "0.16", default-features = false, features = ["specs-derive"]}
 log = "0.4"
 enum-iterator = "0.6"
+euclid = "0.22"

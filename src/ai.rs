@@ -1,4 +1,4 @@
-use crate::{Action, Position};
+use crate::{geometry::Motion, Action, Position};
 use specs::{prelude::*, Component};
 
 /// A generic trait for objects to decide what they want to do next.
@@ -19,13 +19,13 @@ impl AI for Swarm {
         let pos_component = world.read_component::<Position>();
         let to_target =
             pos_component.get(self.target).unwrap().0 - pos_component.get(me).unwrap().0;
-        if to_target.linf() <= 1 {
+        if to_target.x.abs() <= 1 && to_target.y.abs() <= 1 {
             Some(Action::Attack {
                 target: self.target,
             })
         } else {
             Some(Action::Move {
-                motion: to_target.signum(),
+                motion: Motion::new(to_target.x.signum(), to_target.y.signum()),
             })
         }
     }
