@@ -36,6 +36,12 @@ impl Initiative {
 #[storage(NullStorage)]
 pub struct Ready;
 
+/// A marker component for the player entity. There is at most one entity with this ID, and its ID
+/// is also stored in the PlayerId resource.
+#[derive(Component, Default, Debug, Copy, Clone)]
+#[storage(NullStorage)]
+pub struct IsPlayer;
+
 /// Represents the human-readable name of something. Should be all-lowercase (except for proper
 /// nouns, of course).
 #[derive(Component, Debug, Clone)]

@@ -24,6 +24,7 @@ pub struct Engine {
 pub enum LoopState {
     Looping,
     WaitingForPlayer,
+    GameOver,
 }
 
 impl Engine {
@@ -40,6 +41,7 @@ impl Engine {
         world.register::<AttackIntent>();
         world.register::<QueuedDamage>();
         world.register::<CombatStats>();
+        world.register::<IsPlayer>();
         world.insert(LoopState::Looping);
         Engine { world }
     }
@@ -147,9 +149,13 @@ impl Engine {
             DamageSystem.run_now(&self.world);
             DeathSystem.run_now(&self.world);
             self.world.maintain();
-            if *self.world.fetch_mut::<LoopState>() == LoopState::WaitingForPlayer {
+            if *self.world.fetch_mut::<LoopState>() != LoopState::Looping {
                 return;
             }
         }
+    }
+
+    pub fn loop_state(&self) -> LoopState {
+        *self.world.fetch::<LoopState>()
     }
 }

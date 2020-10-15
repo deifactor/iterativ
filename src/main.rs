@@ -51,6 +51,7 @@ impl Iterativ {
             })
             .with(Position(Point { x: 5, y: 5 }))
             .with(AIComponent(Box::new(PlayerAI)))
+            .with(IsPlayer)
             .with(Visible {
                 tile_id: TileId::Player,
             })
@@ -139,6 +140,10 @@ impl Iterativ {
     }
 
     pub fn event(&mut self, event: &Event) -> Result<()> {
+        if self.state.loop_state() == LoopState::GameOver {
+            // disable game input in game over
+            return Ok(());
+        }
         if let Event::KeyboardInput(ev) = event {
             if !ev.is_down() {
                 return Ok(());
@@ -175,8 +180,13 @@ impl Iterativ {
     }
 
     fn update(&mut self) -> Result<()> {
-        self.state.tick();
-        self.state.world.maintain();
+        match self.state.loop_state() {
+            LoopState::WaitingForPlayer | LoopState::Looping => {
+                self.state.tick();
+                self.state.world.maintain();
+            }
+            LoopState::GameOver => {}
+        }
         Ok(())
     }
 }
@@ -206,6 +216,7 @@ fn main() {
     // Setting min_size and max_size here tells i3 that this wants to be a floating window. the
     let settings = Settings {
         size,
+        vsync: true,
         ..Settings::default()
     };
     quicksilver::run(settings, app);
