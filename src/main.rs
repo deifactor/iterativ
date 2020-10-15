@@ -11,7 +11,6 @@ use crate::ai::{AIComponent, PlayerAI, Swarm};
 use crate::components::*;
 use crate::engine::*;
 use crate::event_log::EventLogRenderer;
-use crate::geometry::*;
 use crate::tiles::*;
 use quicksilver::{
     geom::{Rectangle, Vector},

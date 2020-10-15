@@ -3,7 +3,7 @@ use specs::prelude::*;
 
 use crate::ai;
 use crate::components::*;
-use crate::geometry::Motion;
+use crate::geometry::*;
 use crate::map::Map;
 use crate::systems::*;
 
@@ -12,7 +12,7 @@ pub struct PlayerId(pub Entity);
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    Move { motion: Motion },
+    Move { motion: WorldVector },
     Attack { target: Entity },
 }
 

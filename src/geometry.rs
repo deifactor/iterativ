@@ -5,5 +5,5 @@
 //! use quicksilver's types.
 pub struct WorldSpace;
 
-pub type Point = euclid::Point2D<i32, WorldSpace>;
-pub type Motion = euclid::Vector2D<i32, WorldSpace>;
+pub type WorldPoint = euclid::Point2D<i32, WorldSpace>;
+pub type WorldVector = euclid::Vector2D<i32, WorldSpace>;

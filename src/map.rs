@@ -1,6 +1,6 @@
 use specs::Entity;
 
-use crate::geometry::Point;
+use crate::geometry::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TileType {
@@ -49,7 +49,7 @@ impl Map {
         (self.width * self.height) as usize
     }
 
-    fn idx(&self, point: Point) -> usize {
+    fn idx(&self, point: WorldPoint) -> usize {
         assert!(point.x >= 0);
         assert!(point.y >= 0);
         (self.width * point.y + point.x) as usize
@@ -64,7 +64,7 @@ impl Map {
         }
     }
 
-    pub fn add_entity(&mut self, point: Point, entity: Entity, blocks: bool) {
+    pub fn add_entity(&mut self, point: WorldPoint, entity: Entity, blocks: bool) {
         let idx = self.idx(point);
         if blocks {
             self.blockers[idx] = Some(entity)
@@ -73,14 +73,14 @@ impl Map {
     }
 
     /// Is movement onto this tile blocked?
-    pub fn is_blocked(&self, point: Point) -> bool {
+    pub fn is_blocked(&self, point: WorldPoint) -> bool {
         let idx = self.idx(point);
         self.tiles[idx].is_solid() || self.blockers[idx].is_some()
     }
 
     /// If motion onto this tile is blocked by a specific entity, returns that entity. Note that
     /// this can return None even if is_blocked is true if the map itself blocks movement.
-    pub fn blockers(&self, point: Point) -> Option<Entity> {
+    pub fn blockers(&self, point: WorldPoint) -> Option<Entity> {
         self.blockers[self.idx(point)]
     }
 }

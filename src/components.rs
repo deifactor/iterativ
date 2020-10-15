@@ -1,4 +1,4 @@
-use crate::geometry::{Motion, Point};
+use crate::geometry::*;
 use crate::tiles::TileId;
 use specs::{prelude::*, Component};
 
@@ -51,7 +51,7 @@ pub struct Name {
 
 /// The position of a given entity inside the world.
 #[derive(Component, Debug, Copy, Clone)]
-pub struct Position(pub Point);
+pub struct Position(pub WorldPoint);
 
 /// A tag to indicate that an entity cannot be moved through.
 #[derive(Component, Default, Debug, Copy, Clone)]
@@ -76,7 +76,7 @@ pub struct AttackIntent {
 /// Indicates that this entity wants to move. Resolved by MovementSystem. Only makes sense on entities
 /// that have a Position.
 #[derive(Component, Copy, Clone, Debug)]
-pub struct MoveIntent(pub Motion);
+pub struct MoveIntent(pub WorldVector);
 
 /// Stats that are relevant for combat.
 #[derive(Component, Copy, Clone, Debug)]

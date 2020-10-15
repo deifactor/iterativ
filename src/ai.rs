@@ -1,4 +1,5 @@
-use crate::{geometry::Motion, Action, Position};
+use crate::geometry::WorldVector;
+use crate::{Action, Position};
 use specs::{prelude::*, Component};
 
 /// A generic trait for objects to decide what they want to do next.
@@ -25,7 +26,7 @@ impl AI for Swarm {
             })
         } else {
             Some(Action::Move {
-                motion: Motion::new(to_target.x.signum(), to_target.y.signum()),
+                motion: WorldVector::new(to_target.x.signum(), to_target.y.signum()),
             })
         }
     }
