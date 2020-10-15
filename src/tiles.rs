@@ -1,6 +1,6 @@
 use enum_iterator::IntoEnumIterator;
 use quicksilver::{
-    geom::{Rectangle, Vector},
+    geom::Vector,
     graphics::{Graphics, Image},
     Result,
 };

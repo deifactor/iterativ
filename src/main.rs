@@ -130,9 +130,7 @@ impl Iterativ {
         }
 
         let event_log = self.state.world.fetch::<event_log::EventLog>();
-        let names = self.state.world.read_storage::<Name>();
-        self.log_renderer
-            .render(&event_log, &names, &mut self.graphics)?;
+        self.log_renderer.render(&event_log, &mut self.graphics)?;
 
         self.graphics.present(&self.window)?;
         Ok(())

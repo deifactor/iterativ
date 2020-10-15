@@ -80,12 +80,7 @@ impl EventLogRenderer {
         Self { bounds, renderer }
     }
 
-    pub fn render(
-        &mut self,
-        log: &EventLog,
-        names: &ReadStorage<Name>,
-        graphics: &mut Graphics,
-    ) -> Result<()> {
+    pub fn render(&mut self, log: &EventLog, graphics: &mut Graphics) -> Result<()> {
         let mut lines: Vec<_> = log.events().take(5).collect();
         lines.reverse();
         let joined = lines.join("\n");
